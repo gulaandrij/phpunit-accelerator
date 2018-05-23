@@ -75,7 +75,11 @@ class DummyTest extends \PHPUnit_Fake
 
 class AlwaysIgnoreTestPolicy implements IgnoreTestPolicy
 {
-    public function shouldIgnore(\ReflectionObject $testReflection)
+    /**
+     * @param ReflectionObject $testReflection
+     * @return bool
+     */
+    public function shouldIgnore(\ReflectionObject $testReflection): bool
     {
         return true;
     }

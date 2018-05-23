@@ -2,25 +2,45 @@
 
 namespace MyBuilder\PhpunitAccelerator;
 
-use PHPUnit\Framework\BaseTestListener;
+use PHPUnit\Framework\Test;
+use PHPUnit\Framework\TestListenerDefaultImplementation;
 
 if (!interface_exists('\PHPUnit\Framework\Test')) {
     class_alias('\PHPUnit_Framework_Test', '\PHPUnit\Framework\Test');
 }
 
-class TestListener extends BaseTestListener
+/**
+ * Class TestListener
+ * @package MyBuilder\PhpunitAccelerator
+ */
+class TestListener implements \PHPUnit\Framework\TestListener
 {
+    use TestListenerDefaultImplementation;
+
+    /**
+     * @var IgnoreTestPolicy
+     */
     private $ignorePolicy;
 
-    const PHPUNIT_PROPERTY_PREFIX = 'PHPUnit_';
+    public const PHPUNIT_PROPERTY_PREFIX = 'PHPUnit_';
 
+    /**
+     * TestListener constructor.
+     * @param IgnoreTestPolicy|null $ignorePolicy
+     */
     public function __construct(IgnoreTestPolicy $ignorePolicy = null)
     {
-        $this->ignorePolicy = ($ignorePolicy) ?: new NeverIgnoreTestPolicy();
+        $this->ignorePolicy = $ignorePolicy ?? new NeverIgnoreTestPolicy();
     }
 
-    public function endTest(\PHPUnit\Framework\Test $test, $time)
+    /**
+     * @param Test $test
+     * @param float $time
+     */
+    public function endTest(Test $test, $time): void
     {
+        var_dump($test);
+
         $testReflection = new \ReflectionObject($test);
 
         if ($this->ignorePolicy->shouldIgnore($testReflection)) {
@@ -30,36 +50,44 @@ class TestListener extends BaseTestListener
         $this->safelyFreeProperties($test, $testReflection->getProperties());
     }
 
-    private function safelyFreeProperties(\PHPUnit\Framework\Test $test, array $properties)
+    /**
+     * @param Test $test
+     * @param \ReflectionProperty[] $properties
+     */
+    private function safelyFreeProperties(Test $test, array $properties): void
     {
-        foreach ($properties as $property) {
+        array_walk($properties, function (\ReflectionProperty $property) use ($test) {
             if ($this->isSafeToFreeProperty($property)) {
                 $this->freeProperty($test, $property);
             }
-        }
+        });
     }
 
-    private function isSafeToFreeProperty(\ReflectionProperty $property)
+    /**
+     * @param \ReflectionProperty $property
+     * @return bool
+     */
+    private function isSafeToFreeProperty(\ReflectionProperty $property): bool
     {
         return !$property->isStatic() && $this->isNotPhpUnitProperty($property);
     }
 
-    private function isNotPhpUnitProperty(\ReflectionProperty $property)
+    /**
+     * @param \ReflectionProperty $property
+     * @return bool
+     */
+    private function isNotPhpUnitProperty(\ReflectionProperty $property): bool
     {
         return 0 !== strpos($property->getDeclaringClass()->getName(), self::PHPUNIT_PROPERTY_PREFIX);
     }
 
-    private function freeProperty(\PHPUnit\Framework\Test $test, \ReflectionProperty $property)
+    /**
+     * @param Test $test
+     * @param \ReflectionProperty $property
+     */
+    private function freeProperty(Test $test, \ReflectionProperty $property): void
     {
         $property->setAccessible(true);
         $property->setValue($test, null);
-    }
-}
-
-class NeverIgnoreTestPolicy implements IgnoreTestPolicy
-{
-    public function shouldIgnore(\ReflectionObject $testReflection)
-    {
-        return false;
     }
 }
