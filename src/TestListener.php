@@ -39,8 +39,6 @@ class TestListener implements \PHPUnit\Framework\TestListener
      */
     public function endTest(Test $test, $time): void
     {
-        var_dump($test);
-
         $testReflection = new \ReflectionObject($test);
 
         if ($this->ignorePolicy->shouldIgnore($testReflection)) {
